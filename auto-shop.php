@@ -102,13 +102,26 @@ class ProductController
     public function Display()
     {
         foreach($this->products as $number => $product) {
+            $this->count = 0;
             if($product->amount == 0) {
-                echo "$number. $product->model "
-                    . bcadd($product->price, "0")
-                    . " "
-                    . bcadd($product->amount, "0", 0)
-                    . "\n";
+                $this->count++;
+                echo "$number. $product->model $product->price $product->amount \n";
             }
+        }
+    }
+
+    public function GetById($id) 
+    {
+        $id = (int)$id;
+        $product =  $this->products[$id];
+        
+        if($product == null) {
+        echo "Product doesn't exist\n";
+        return null;
+        }
+        else 
+        {
+            return $product;
         }
     }
 }
@@ -124,25 +137,62 @@ class ProductAutoProvider
     public function Initialize() : array
     {
         return array(
-            0 => new Auto(123, "bro", 18),
-            1 => new Auto(111, "bruh", 19),
-            2 => new Auto(999, "Bro))", 20)
+            1 => new Auto(123, "bro", 18),
+            2 => new Auto(111, "bruh", 19),
+            3 => new Auto(999, "Bro))", 20)
         );
+    }
+}
+
+class BasketController
+{
+    private $products;
+    private $count;
+
+    public function __construct()
+    {
+        $this->products = [];
+        $this->count = 0;
+    }
+
+    public function Add($product)
+    {
+        $this->products[$this->count++] = $this->product;
+    }
+
+    public function GetProductsPrice() : int
+    {
+        $sum = 0;
+        foreach($this->products as $number => $product) {
+            $sum += $product->price; // Ціна всіх покупок ще поки не розраховується.
+        }
+
+        return $sum;
+    } 
+
+    public function Display()
+    {
+        foreach($this->products as $number => $product) {
+            echo "$number. $product->model $product->price \n";
+        }
     }
 }
 
 class Shop 
 {
-    protected $product_controller;
-    protected $user_controller;
+    private $product_controller;
+    private $user_controller;
+    private $basket_controller;
 
     public function __construct(
         $product_controller, 
-        $user_controller
+        $user_controller,
+        $basket_controller
         )
     {
         $this->product_controller = $product_controller;
         $this->user_controller = $user_controller;
+        $this->basket_controller = $basket_controller;
     }
 
     public function DisplayProducts()
@@ -154,17 +204,46 @@ class Shop
 
 class AutoShop extends Shop
 {
+    private $product_controller;
+    private $basket_controller;
+    private $user_controller;
+
     public function __construct(
         $product_controller, 
-        $user_controller
+        $user_controller,
+        $basket_controller
         ) 
     {
-        parent::__construct($product_controller, $user_controller);
+        $this->product_controller = $product_controller;
+        $this->user_controller = $user_controller;
+        $this->basket_controller = $basket_controller;
+        parent::__construct($product_controller, $user_controller, $basket_controller);
     }
 
     public function Shopping()
     {
-        parent::DisplayProducts();
+        do
+        {
+            parent::DisplayProducts();
+
+            $choice = readline("Виберіть продукт по його номеру щоб додати до корзини. Вийти - 0:");
+
+            switch($choice)
+            {
+                case 0:
+                    break(2);
+                break;
+                default:
+                    $product = $this->product_controller->GetById($choice);
+                    if($product != null)
+                    {
+                        $this->basket_products[$this->$basket_count++] = $product;
+                        sleep(2);
+                        echo "Продукт номер $choice додано до корзини\n";
+                    }
+                break;
+            }
+        } while(true);
     }
 
     public function UserSettings()
@@ -174,7 +253,25 @@ class AutoShop extends Shop
 
     public function Check()
     {
+        do
+        {
+            $global_price = $this->basket_controller->GetProductsPrice();
+            echo "Кошик\n Ціна всіх покупок: $global_price\n";
+            $this->basket_controller->Display();
+            echo "Вийти 0.\n";
 
+            $choice = readline("Ваш вибір:");
+
+            switch($choice)
+            {
+                case 0:
+                    break(2);
+                break;
+                default:
+                    echo "Такого пункту меню не існує\n";
+                break;
+            }
+        }   while(true);
     }
 }
 
@@ -192,7 +289,10 @@ class ShopController
     {
         do
         {
-            echo "1. Розпочати покупки – «1».\n2. Отримати підсумковий рахунок – «2».\n3. Налаштування профілю – «3».\n4. Вихід із програми – «0».\n";
+            echo "1. Розпочати покупки – «1».\n"
+            ."2. Отримати підсумковий рахунок – «2».\n"
+            ."3. Налаштування профілю – «3».\n"
+            ."4. Вихід із програми – «0».\n";
             $choice = readline("Ваш вибір: ");
 
             switch($choice)
@@ -222,7 +322,8 @@ class ShopController
 $shop_controller = new ShopController (
     new AutoShop(
         new ProductController((new ProductAutoProvider())->Initialize()),
-        new UserController(new User("bro", 123))
+        new UserController(new User("bro", 123)),
+        new BasketController()
     )
 );
 $shop_controller->Display();
