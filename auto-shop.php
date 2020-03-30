@@ -2,8 +2,8 @@
 
 class User 
 {
-    private $name;
-    private $age;
+    public $name;
+    public $age;
 
     public function __construct($name, $age) 
     {
@@ -11,9 +11,22 @@ class User
         $this->age = $age;
     }
 
-    public function Edit()
+    public function SetName($name)
     {
-        echo "TODO";
+        $this->name = $name;  
+        echo "Ім'я збережено\n"; 
+    }
+
+    public function SetAge($age)
+    {
+        if($age < 18 || $age > 101)
+        {
+            echo "Вік не коректний\n";
+            return false;
+        }
+        $this->age = $age;
+        echo "Вік збережено\n";
+        return true;
     }
 }
 
@@ -28,33 +41,55 @@ class UserController
 
     public function Edit()
     {
-
-    }
-}
-
-class UserValidation
-{
-    public function NameValidation($name) : boolean
-    {
-        //Todo validation
-        return true;
-    }    
-
-    public function AgeValidation($name) : boolean
-    {
-        //Todo validation
-        return true;
-    }
-}
-
-class ProductValidation
-{
-    public function AutoAgeValidation($age, $requireAge)
-    {
-        if($age >= $requireAge)
+        do 
         {
-            return true;
-        }
+            echo "1. Змінити ім'я - 1\n"
+            . "2. Змінити вік - 2\n"
+            . "3. Вийти - 0\n";
+
+            $choice = readline("Ваш вибір:");
+
+            switch($choice)
+            {
+                case 1:
+                    $this->NameChange();
+                break;
+                case 2:
+                    $this->AgeChange();
+                break;        
+                case 0:
+                    break(2);
+                break;
+                default:
+                    echo "Такого пункту меню не існує";
+                break;
+            }
+
+        } while(true);
+    }
+
+    public function GetName() : string 
+    {
+        return $this->user->name;
+    }
+
+    public function GetAge() : int
+    {
+        return $this->user->age;
+    }
+
+    public function NameChange()
+    {
+        $new_name = readline("Ведіть нове ім'я:");
+        sleep(1);
+        $this->user->SetName($new_name);
+    }
+
+    public function AgeChange()
+    {
+        $new_age = readline("Ведіть новий вік:");
+        sleep(1);
+        $this->user->SetAge($new_age);
     }
 }
 
@@ -63,10 +98,10 @@ class Product
     public $amount;
     public $price; 
 
-    public function __construct($price)
+    public function __construct($price, $amount)
     {
         $this->price = $price;
-        $this->amount = 0;
+        $this->amount = $amount;
     }
 }
 
@@ -75,9 +110,9 @@ class Auto extends Product
     public $model;
     public $requireAge;
 
-    public function __construct($price, $model, $requireAge)
+    public function __construct($price, $model, $requireAge, $amount)
     {
-        parent::__construct($price);
+        parent::__construct($price, $amount);
         $this->model = $model;
         $this->requireAge = $requireAge;
     }
@@ -86,60 +121,57 @@ class Auto extends Product
 class ProductController
 {
     public $products;
-    public $count;
 
     function __construct($products)
     {
         $this->products = $products;
-        $this->count = 0;
-    }
-
-    public function Add($product)
-    {
-        $this->products[$this->count++] = $product;
     }
 
     public function Display()
     {
+        echo "Номер Назва Ціна Кількість\n";
         foreach($this->products as $number => $product) {
-            $this->count = 0;
-            if($product->amount == 0) {
-                $this->count++;
-                echo "$number. $product->model $product->price $product->amount \n";
-            }
+            echo "$number. $product->model $product->price $product->amount \n";
         }
     }
 
-    public function GetById($id) 
+    public function GetByIdWithCount($id, $count) 
     {
         $id = (int)$id;
+        $count = (int)$count;
         $product =  $this->products[$id];
         
-        if($product == null) {
-        echo "Product doesn't exist\n";
-        return null;
-        }
-        else 
+        if($product == null) 
         {
-            return $product;
+            echo "Продукт не існує\n";
+            return null;
         }
+        
+        if($count <= 0)
+        {
+            echo "Кількість товару ведена помилково\n";
+            return null;
+        }
+
+        if($product->amount < $count)
+        {
+            echo "На складі немає такої кількості товару\n";
+            return null;
+        }
+
+        $this->products[$id]->amount -= $count;
+        return $product;
     }
 }
 
 class ProductAutoProvider
 {
-    private $products;
-
-    function __construct()
-    {
-    }
-
     public function Initialize() : array
     {
         return array(
-            1 => new Auto(123, "bro", 18),
-            2 => new Auto(111, "bruh", 19),
-            3 => new Auto(999, "Bro))", 20)
+            1 => new Auto(123, "Nissan", 18, 20),
+            2 => new Auto(111, "Mercedes-Benz", 19, 30),
+            3 => new Auto(999, "Toyota", 20, 50)
         );
     }
 }
@@ -147,33 +179,32 @@ class ProductAutoProvider
 class BasketController
 {
     private $products;
-    private $count;
 
     public function __construct()
     {
-        $this->products = [];
-        $this->count = 0;
+        $this->products = array();
     }
 
-    public function Add($product)
+    public function Add($product, $count)
     {
-        $this->products[$this->count++] = $this->product;
+        $product->amount = (int)$count;
+        array_push($this->products, $product);
     }
 
     public function GetProductsPrice() : int
     {
         $sum = 0;
-        foreach($this->products as $number => $product) {
-            $sum += $product->price; // Ціна всіх покупок ще поки не розраховується.
+        for($i = 0; $i < count($this->products); $i++)
+        {
+            $sum += $this->products[$i]->price * $this->products[$i]->amount;
         }
-
         return $sum;
     } 
 
     public function Display()
     {
-        foreach($this->products as $number => $product) {
-            echo "$number. $product->model $product->price \n";
+        for($i = 0; $i < count($this->products); $i++) {
+            echo ($i + 1) . "  " . $this->products[$i]->model . "  " .  $this->products[$i]->price . " " . $this->products[$i]->amount ."  \n";
         }
     }
 }
@@ -226,7 +257,8 @@ class AutoShop extends Shop
         {
             parent::DisplayProducts();
 
-            $choice = readline("Виберіть продукт по його номеру щоб додати до корзини. Вийти - 0:");
+            echo "Виберіть продукт по його номеру щоб додати до корзини. Вийти - 0.\n";
+            $choice = readline("Ваш вибір: ");
 
             switch($choice)
             {
@@ -234,12 +266,21 @@ class AutoShop extends Shop
                     break(2);
                 break;
                 default:
-                    $product = $this->product_controller->GetById($choice);
+                    $product_count = readline("Ведіть кількість товару:");
+                    $product = $this->product_controller->GetByIdWithCount($choice, $product_count);
+
                     if($product != null)
                     {
-                        $this->basket_products[$this->$basket_count++] = $product;
-                        sleep(2);
-                        echo "Продукт номер $choice додано до корзини\n";
+                        if($product->requireAge > $this->user_controller->GetAge())
+                        {
+                            echo "Недопустимий вік користувача при спробі додати цей товар до корзини";
+                        } 
+                        else 
+                        {
+                            $this->basket_controller->Add($product, $product_count);
+                            sleep(2);
+                            echo "Продукт номер $choice в розмірі $product_count одиниць додано до корзини\n";
+                        }
                     }
                 break;
             }
@@ -248,7 +289,27 @@ class AutoShop extends Shop
 
     public function UserSettings()
     {
+        do 
+        {
+            echo "Ваше ім'я: " . $this->user_controller->GetName() . "\n";
+            echo "Ваш вік: " . $this->user_controller->GetAge() . "\n";
+            echo "Змінити ім'я або вік - 1. \n" . "Вийти - 0. \n";
+            $choice = readline("Ваш вибір: ");
 
+            switch($choice)
+            {
+                case 1:
+                    $this->user_controller->Edit();
+                break;
+                case 0:
+                    break(2);
+                break;
+                default:
+                    echo "Такого пункту меню не існує\n";
+                break;
+            }
+
+        } while(true);
     }
 
     public function Check()
@@ -310,7 +371,7 @@ class ShopController
                     break(2);
                     break;
                 default:
-                    echo "Такий пункт меню не знайдено! Спробуйте ще.";
+                    echo "Такий пункт меню не знайдено! Спробуйте ще.\n";
                     break;
             }
 
@@ -319,10 +380,20 @@ class ShopController
 }
 
 
+$user = new User(null, null);
+$init_name = readline("Ведіть ваше імя: ");
+$user->SetName($init_name);
+while(true) 
+{
+    $init_age = readline("Ведіть ваш вік: ");
+    if($user->SetAge($init_age))
+        break;
+}
+
 $shop_controller = new ShopController (
     new AutoShop(
         new ProductController((new ProductAutoProvider())->Initialize()),
-        new UserController(new User("bro", 123)),
+        new UserController($user),
         new BasketController()
     )
 );
